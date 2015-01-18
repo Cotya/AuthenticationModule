@@ -9,9 +9,11 @@
 namespace Cotya\Authentication\Controller\Index;
 
 use Magento\Framework\App\Action\Context;
+use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Customer\Model\Session;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
+use Magento\Customer\Api\Data\CustomerDataBuilder;
 
 class Login extends \Magento\Framework\App\Action\Action
 {
@@ -19,6 +21,10 @@ class Login extends \Magento\Framework\App\Action\Action
     /** @var AccountManagementInterface */
     protected $customerAccountManagement;
     
+
+    /** @var CustomerDataBuilder */
+    protected $customerDataBuilder;
+
     /**
      * @var CustomerRepositoryInterface
      */
@@ -31,9 +37,11 @@ class Login extends \Magento\Framework\App\Action\Action
         Context $context,
         Session $customerSession,
         CustomerRepositoryInterface $customerRepository,
+        CustomerDataBuilder $customerDetailsBuilder,
         AccountManagementInterface $customerAccountManagement
     ) {
         $this->customerAccountManagement = $customerAccountManagement;
+        $this->customerDataBuilder = $customerDetailsBuilder;
         $this->customerRepository = $customerRepository;
         $this->session = $customerSession;
         parent::__construct($context);
@@ -72,10 +80,6 @@ class Login extends \Magento\Framework\App\Action\Action
             // Optional: Now you have a token you can look up a users profile data
             try {
 
-                var_dump(
-                    $this->session->getData('oauth2state'),
-                    $this->getRequest()->getParam('code'),
-                    $token);
                 // We got an access token, let's now get the user's details
                 $userDetails = $provider->getUserDetails($token);
 
@@ -95,8 +99,21 @@ class Login extends \Magento\Framework\App\Action\Action
 
             if($userDetails->email == "flyingmana@googlemail.com"){
 
-                var_dump($userDetails->email);
-                $customer = $this->customerRepository->get("test1@example.com");
+                try{
+                    $customer = $this->customerRepository->get($userDetails->email);
+                }catch(NoSuchEntityException $e){
+                    /** @var \Magento\Customer\Model\Data\Customer $customerEntity */
+                    $customerEntity = $this->customerDataBuilder
+                        ->populateWithArray([
+                            'email' => $userDetails->email,
+                            'firstname' => $userDetails->nickname,
+                            'lastname' => 'Anon',
+                        ])
+                        ->create();
+                    $customer = $this->customerAccountManagement->createAccount($customerEntity);
+                }
+                
+                
                 /** @see \Magento\Customer\Controller\Account\LoginPost::execute */
                 /** @see \Magento\Customer\Model\AccountManagement::authenticate */
                 // @todo add confirmation validation

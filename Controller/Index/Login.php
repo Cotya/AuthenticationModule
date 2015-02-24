@@ -11,6 +11,8 @@ namespace Cotya\Authentication\Controller\Index;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Customer\Model\Session;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\UrlInterface;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerDataBuilder;
@@ -31,10 +33,14 @@ class Login extends \Magento\Framework\App\Action\Action
     
     /** @var Session */
     protected $session;
+    
+    /** @var ScopeConfigInterface  */
+    protected $scopeConfig;
 
     public function __construct(
         Context $context,
         Session $customerSession,
+        ScopeConfigInterface $scopeConfig,
         CustomerRepositoryInterface $customerRepository,
         CustomerDataBuilder $customerDetailsBuilder,
         AccountManagementInterface $customerAccountManagement
@@ -43,6 +49,7 @@ class Login extends \Magento\Framework\App\Action\Action
         $this->customerDataBuilder = $customerDetailsBuilder;
         $this->customerRepository = $customerRepository;
         $this->session = $customerSession;
+        $this->scopeConfig = $scopeConfig;
         parent::__construct($context);
     }
     
@@ -55,9 +62,15 @@ class Login extends \Magento\Framework\App\Action\Action
         }
         
         $provider = new \League\OAuth2\Client\Provider\Github(array(
-            'clientId'  =>  'XXX',
-            'clientSecret'  =>  'XXXXX',
-            'redirectUri'   =>  'http://XXXXXXX',
+            'clientId'  => $this->scopeConfig->getValue(
+                'cotya_authentication/github/client_id',
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ),
+            'clientSecret'  =>  $this->scopeConfig->getValue(
+                'cotya_authentication/github/client_secret',
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ),
+            'redirectUri'   =>   $this->_url->getUrl('cotya_authentication/index/login'),
             'scopes' => array(),
         ));
         

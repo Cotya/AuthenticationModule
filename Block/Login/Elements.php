@@ -1,13 +1,12 @@
 <?php
 /**
- * 
- * 
- * 
- * 
+ *
+ *
+ *
+ *
  */
 
 namespace Cotya\Authentication\Block\Login;
-
 
 use Magento\Framework\View\Element\AbstractBlock;
 

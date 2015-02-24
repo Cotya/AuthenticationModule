@@ -1,9 +1,9 @@
 <?php
 /**
- * 
- * 
- * 
- * 
+ *
+ *
+ *
+ *
  */
 
 namespace Cotya\Authentication\Controller\Index;
@@ -20,7 +20,6 @@ class Login extends \Magento\Framework\App\Action\Action
 
     /** @var AccountManagementInterface */
     protected $customerAccountManagement;
-    
 
     /** @var CustomerDataBuilder */
     protected $customerDataBuilder;

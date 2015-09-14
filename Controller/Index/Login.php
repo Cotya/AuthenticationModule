@@ -79,16 +79,14 @@ class Login extends \Magento\Framework\App\Action\Action
             'scopes' => array(),
         ));
         
-        if(!$this->getRequest()->getParam('code')){
-            
+        if (!$this->getRequest()->getParam('code')) {
             $authUrl = $provider->getAuthorizationUrl();
             $this->session->setData('oauth2state', $provider->state);
             $this->_redirect($authUrl);
             
-        }elseif($this->getRequest()->getParam('state') !== $this->session->getData('oauth2state')){
+        } elseif ($this->getRequest()->getParam('state') !== $this->session->getData('oauth2state')) {
             $this->session->unsetData('oauth2state');
-        }else{
-
+        } else {
             $token = $provider->getAccessToken(
                 'authorization_code',
                 array( 'code' => $this->getRequest()->getParam('code'))
@@ -96,7 +94,6 @@ class Login extends \Magento\Framework\App\Action\Action
 
             // Optional: Now you have a token you can look up a users profile data
             try {
-
                 // We got an access token, let's now get the user's details
                 $userDetails = $provider->getUserDetails($token);
 
@@ -106,7 +103,6 @@ class Login extends \Magento\Framework\App\Action\Action
 
 
             } catch (\Exception $e) {
-
                 //echo $e;
                 // Failed to get user details
                 //exit('Oh dear...');
@@ -114,32 +110,29 @@ class Login extends \Magento\Framework\App\Action\Action
             }
 
 
-            if($userDetails->email == "flyingmana@googlemail.com"){
-
-                try{
-                    $customer = $this->customerRepository->get($userDetails->email);
-                }catch(NoSuchEntityException $e){
-                    /** @var \Magento\Customer\Model\Data\Customer $customerEntity */
-                    $customerEntity = $this->customerFactory->create();
-                    $customerEntity->setEmail($userDetails->email);
-                    $customerEntity->setFirstname($userDetails->nickname);
-                    $customerEntity->setLastname('Anon');
-                    $customer = $this->customerAccountManagement->createAccount($customerEntity);
-                }
-                
-                
-                /** @see \Magento\Customer\Controller\Account\LoginPost::execute */
-                /** @see \Magento\Customer\Model\AccountManagement::authenticate */
-                // @todo add confirmation validation
-                // @todo maybe move some of this logic into the account manager
-                //if ($customer->getConfirmation() && $this->isConfirmationRequired($customer)) {
-                //    throw new EmailNotConfirmedException('This account is not confirmed.', []);
-                //}
-                
-                $this->session->setCustomerDataAsLoggedIn($customer);
-                $this->session->regenerateId();
-                $this->_redirect('/');
+            try {
+                $customer = $this->customerRepository->get($userDetails->email);
+            } catch (NoSuchEntityException $e) {
+                /** @var \Magento\Customer\Model\Data\Customer $customerEntity */
+                $customerEntity = $this->customerFactory->create();
+                $customerEntity->setEmail($userDetails->email);
+                $customerEntity->setFirstname($userDetails->nickname);
+                $customerEntity->setLastname('Anon');
+                $customer = $this->customerAccountManagement->createAccount($customerEntity);
             }
+            
+            
+            /** @see \Magento\Customer\Controller\Account\LoginPost::execute */
+            /** @see \Magento\Customer\Model\AccountManagement::authenticate */
+            // @todo add confirmation validation
+            // @todo maybe move some of this logic into the account manager
+            //if ($customer->getConfirmation() && $this->isConfirmationRequired($customer)) {
+            //    throw new EmailNotConfirmedException('This account is not confirmed.', []);
+            //}
+            
+            $this->session->setCustomerDataAsLoggedIn($customer);
+            $this->session->regenerateId();
+            $this->_redirect('/');
             
             
             
@@ -155,6 +148,4 @@ class Login extends \Magento\Framework\App\Action\Action
         //die(__FILE__.":".__LINE__);
         
     }
-    
-    
 }

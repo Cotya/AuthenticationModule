@@ -23,6 +23,11 @@ class Login extends \Magento\Framework\App\Action\Action
     /** @var AccountManagementInterface */
     protected $customerAccountManagement;
 
+    /**
+     * @var \Magento\Customer\Api\Data\CustomerInterfaceFactory
+     */
+    protected $customerFactory;
+
     /** @var CustomerDataBuilder */
     protected $customerDataBuilder;
 
@@ -42,11 +47,11 @@ class Login extends \Magento\Framework\App\Action\Action
         Session $customerSession,
         ScopeConfigInterface $scopeConfig,
         CustomerRepositoryInterface $customerRepository,
-        CustomerDataBuilder $customerDetailsBuilder,
+        \Magento\Customer\Api\Data\CustomerInterfaceFactory $customerFactory,
         AccountManagementInterface $customerAccountManagement
     ) {
         $this->customerAccountManagement = $customerAccountManagement;
-        $this->customerDataBuilder = $customerDetailsBuilder;
+        $this->customerFactory = $customerFactory;
         $this->customerRepository = $customerRepository;
         $this->session = $customerSession;
         $this->scopeConfig = $scopeConfig;
@@ -115,13 +120,10 @@ class Login extends \Magento\Framework\App\Action\Action
                     $customer = $this->customerRepository->get($userDetails->email);
                 }catch(NoSuchEntityException $e){
                     /** @var \Magento\Customer\Model\Data\Customer $customerEntity */
-                    $customerEntity = $this->customerDataBuilder
-                        ->populateWithArray([
-                            'email' => $userDetails->email,
-                            'firstname' => $userDetails->nickname,
-                            'lastname' => 'Anon',
-                        ])
-                        ->create();
+                    $customerEntity = $this->customerFactory->create();
+                    $customerEntity->setEmail($userDetails->email);
+                    $customerEntity->setFirstname($userDetails->nickname);
+                    $customerEntity->setLastname('Anon');
                     $customer = $this->customerAccountManagement->createAccount($customerEntity);
                 }
                 

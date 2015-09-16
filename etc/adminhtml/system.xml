@@ -18,6 +18,10 @@
                 <field id="client_secret" translate="label" type="text" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Github Client Secret</label>
                 </field>
+                <field id="scope_email_enforce" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enforce email scope and using of Primary Github Email</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
         </section>
     </system>

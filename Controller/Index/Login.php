@@ -8,6 +8,7 @@
 
 namespace Cotya\Authentication\Controller\Index;
 
+use League\OAuth2\Client\Provider;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Customer\Model\Session;
@@ -16,6 +17,7 @@ use Magento\Framework\UrlInterface;
 use Magento\Customer\Api\AccountManagementInterface;
 use Magento\Customer\Api\CustomerRepositoryInterface;
 use Magento\Customer\Api\Data\CustomerDataBuilder;
+use Magento\PageCache\Model\App\FrontController\MessageBox;
 
 class Login extends \Magento\Framework\App\Action\Action
 {
@@ -58,6 +60,24 @@ class Login extends \Magento\Framework\App\Action\Action
         parent::__construct($context);
     }
     
+    private function getStoreConfigValue($key)
+    {
+        return $this->scopeConfig->getValue($key, \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+    }
+    
+    private function getEmailFromGithub($enforceEmailScope, Provider\Github $provider, $token)
+    {
+        if ($enforceEmailScope) {
+            $emails = $provider->getUserEmails($token);
+            foreach ($emails as $email) {
+                if ($email->primary && $email->verified) {
+                    return $email->email;
+                }
+            }
+        } else {
+            return $provider->getUserEmail($token);
+        }
+    }
     
     public function execute()
     {
@@ -65,8 +85,14 @@ class Login extends \Magento\Framework\App\Action\Action
             $this->_redirect('/');
             return;
         }
+        $requestScopes = [];
+        $enforceEmailScope = "1" === $this->getStoreConfigValue('cotya_authentication/github/scope_email_enforce');
+        if ($enforceEmailScope) {
+            $requestScopes[] = 'user:email';
+        }
         
-        $provider = new \League\OAuth2\Client\Provider\Github(array(
+        
+        $provider = new Provider\Github(array(
             'clientId'  => $this->scopeConfig->getValue(
                 'cotya_authentication/github/client_id',
                 \Magento\Store\Model\ScopeInterface::SCOPE_STORE
@@ -76,7 +102,7 @@ class Login extends \Magento\Framework\App\Action\Action
                 \Magento\Store\Model\ScopeInterface::SCOPE_STORE
             ),
             'redirectUri'   =>   $this->_url->getUrl('cotya_authentication/index/login'),
-            'scopes' => array(),
+            'scopes' => $requestScopes,
         ));
         
         if (!$this->getRequest()->getParam('code')) {
@@ -109,13 +135,29 @@ class Login extends \Magento\Framework\App\Action\Action
                 throw $e;
             }
 
+           
+            $userEmail = $this->getEmailFromGithub($enforceEmailScope, $provider, $token);
+            if (!$userEmail) {
+                $this->session->setUsername($userDetails->nickname);
+                $message = __(
+                    'Your Login Provider did not send an email, so we sadly cant create an account for you.
+                    But stay tuned, we are working on solving this propblem for the future.'
+                );
+                $this->messageManager->addError(
+                    $this->_objectManager->get('Magento\Framework\Escaper')->escapeHtml($message)
+                );
+                echo $message;
+                return;
+                $this->_redirect('customer/account/login');
+                return;
+            }
 
             try {
-                $customer = $this->customerRepository->get($userDetails->email);
+                $customer = $this->customerRepository->get($userEmail);
             } catch (NoSuchEntityException $e) {
                 /** @var \Magento\Customer\Model\Data\Customer $customerEntity */
                 $customerEntity = $this->customerFactory->create();
-                $customerEntity->setEmail($userDetails->email);
+                $customerEntity->setEmail($userEmail);
                 $customerEntity->setFirstname($userDetails->nickname);
                 $customerEntity->setLastname('Anon');
                 $customer = $this->customerAccountManagement->createAccount($customerEntity);
